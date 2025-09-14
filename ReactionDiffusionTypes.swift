@@ -188,6 +188,24 @@ struct RDColorScheme {
         diffuseStrength: 0.8,
         specularStrength: 1.2
     )
+    
+    static let blood = RDColorScheme(
+        colorA: SIMD3<Float>(0.4, 0.0, 0.0),      // Dark blood red background (low B concentration)
+        //colorB: SIMD3<Float>(0.8, 0.3, 0.3),      // Lighter red/pink (medium B concentration)
+        colorB: SIMD3<Float>(1.0, 1.0, 1.0),      // Lighter red/pink (medium B concentration)
+
+        colorC: SIMD3<Float>(1.0, 0.9, 0.9),      // Near white (high B concentration)
+        mode: 1,
+        intensity: 1.0,
+        contrast: 1.5,
+        lightPosition: SIMD3<Float>(0.3, 0.7, 1.5),
+        viewPosition: SIMD3<Float>(0.5, 0.5, 2.0),
+        heightScale: 0.18,
+        shininess: 30.0,
+        ambientStrength: 0.5,
+        diffuseStrength: 0.6,
+        specularStrength: 0.4
+    )
 }
 
 // Enhanced settings class with 3D parameters

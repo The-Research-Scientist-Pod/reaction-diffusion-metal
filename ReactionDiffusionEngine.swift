@@ -423,6 +423,8 @@ class ReactionDiffusionEngine: ObservableObject {
             scheme = RDColorScheme.metallic
         case "Neon":
             scheme = RDColorScheme.neon
+        case "Blood":
+            scheme = RDColorScheme.blood
         default:
             scheme = RDColorScheme.organic
         }

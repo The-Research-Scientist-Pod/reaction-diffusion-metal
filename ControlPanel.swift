@@ -419,7 +419,7 @@ struct VisualSection: View {
     let renderer: MetalRenderer
     @State private var showAdvanced3D = false
     
-    let colorSchemes = ["Organic", "Fire", "Ocean", "Grayscale", "Electric", "Sunset", "Metallic", "Neon"]
+    let colorSchemes = ["Organic", "Fire", "Ocean", "Grayscale", "Electric", "Sunset", "Metallic", "Neon", "Blood"]
     
     var body: some View {
         VStack(spacing: 16) {
