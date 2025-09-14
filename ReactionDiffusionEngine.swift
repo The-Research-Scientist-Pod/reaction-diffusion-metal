@@ -1,8 +1,6 @@
 //
-//  ReactionDiffusionEngine.swift
+//  ReactionDiffusionEngine.swift - Enhanced with 3D Lighting
 //  reaction-diffusion-metal
-//
-//  Created by suf on 13/09/2025.
 //
 
 import Metal
@@ -29,7 +27,7 @@ class ReactionDiffusionEngine: ObservableObject {
     
     // Simulation state
     @Published var settings = RDSettings()
-    private var currentTextureIndex = 0  // 0 for A, 1 for B
+    private var currentTextureIndex = 0
     private var isInitialized = false
     @Published var isRunning = true
     
@@ -38,11 +36,15 @@ class ReactionDiffusionEngine: ObservableObject {
     private var lastFrameTime = CACurrentMediaTime()
     private(set) var currentFPS: Double = 0
     
-    // Current color scheme
+    // Current color scheme with 3D lighting
     private var currentColorScheme = RDColorScheme.organic
     
+    // Animation state for dynamic lighting
+    public var lightAnimationEnabled = false
+    public var lightAnimationSpeed: Float = 0.5
+    
     init() {
-        print("🚀 Initializing ReactionDiffusionEngine...")
+        print("🚀 Initializing ReactionDiffusionEngine with 3D lighting...")
         
         setupMetal()
         print("✅ Metal setup complete")
@@ -56,7 +58,7 @@ class ReactionDiffusionEngine: ObservableObject {
         setupPipelines()
         print("✅ Pipelines created")
         
-        // Initialize with default preset - safely
+        // Initialize with default preset
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
@@ -69,7 +71,7 @@ class ReactionDiffusionEngine: ObservableObject {
             self.initializeSimulation()
             self.isInitialized = true
             
-            print("🎯 ReactionDiffusionEngine initialized successfully")
+            print("🎯 ReactionDiffusionEngine with 3D lighting initialized successfully")
         }
     }
     
@@ -94,9 +96,9 @@ class ReactionDiffusionEngine: ObservableObject {
         let width = Int(settings.width)
         let height = Int(settings.height)
         
-        // Simulation textures - RG32Float for U and V chemicals
+        // Simulation textures - RGBA32Float to store more data
         let simDescriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .rg32Float,
+            pixelFormat: .rgba32Float,
             width: width,
             height: height,
             mipmapped: false
@@ -110,7 +112,7 @@ class ReactionDiffusionEngine: ObservableObject {
         textureA.label = "ReactionDiffusion.TextureA"
         textureB.label = "ReactionDiffusion.TextureB"
         
-        // Display texture - RGBA8Unorm for display
+        // Display texture - RGBA32Float for HDR rendering
         let displayDescriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba32Float,
             width: width,
@@ -130,7 +132,7 @@ class ReactionDiffusionEngine: ObservableObject {
         parametersBuffer = device.makeBuffer(length: parametersSize, options: .storageModeShared)!
         parametersBuffer.label = "ReactionDiffusion.ParametersBuffer"
         
-        // Color scheme buffer
+        // Enhanced color scheme buffer with lighting parameters
         let colorSchemeSize = MemoryLayout<RDColorScheme>.stride
         colorSchemeBuffer = device.makeBuffer(length: colorSchemeSize, options: .storageModeShared)!
         colorSchemeBuffer.label = "ReactionDiffusion.ColorSchemeBuffer"
@@ -154,7 +156,7 @@ class ReactionDiffusionEngine: ObservableObject {
             fatalError("Could not create simulation pipeline: \(error)")
         }
         
-        // Display pipeline
+        // Enhanced display pipeline with 3D lighting
         guard let displayFunction = library.makeFunction(name: "renderReactionDiffusion") else {
             fatalError("Could not find renderReactionDiffusion function")
         }
@@ -176,7 +178,7 @@ class ReactionDiffusionEngine: ObservableObject {
             fatalError("Could not create initialize pipeline: \(error)")
         }
         
-        print("Metal pipelines created successfully")
+        print("Metal pipelines with 3D lighting created successfully")
     }
     
     // MARK: - Buffer Updates
@@ -192,14 +194,31 @@ class ReactionDiffusionEngine: ObservableObject {
         
         let parametersPointer = parametersBuffer.contents().bindMemory(to: ReactionDiffusionParameters.self, capacity: 1)
         parametersPointer[0] = params
-        
-        // Debug output to verify parameters are updating
-        print("Parameters: F=\(params.feedRate), K=\(params.killRate), Da=\(params.diffusionA), Db=\(params.diffusionB), dt=\(params.deltaTime)")
     }
     
     private func updateColorSchemeBuffer() {
+        var scheme = currentColorScheme
+        
+        // Apply settings overrides
+        scheme.heightScale = settings.heightScale
+        scheme.shininess = settings.shininess
+        scheme.ambientStrength = settings.ambientStrength
+        scheme.diffuseStrength = settings.diffuseStrength
+        scheme.specularStrength = settings.specularStrength
+        
+        // Animate light position if enabled
+        if lightAnimationEnabled {
+            let angle = settings.lightAngle
+            scheme.lightPosition = SIMD3<Float>(
+                0.5 + 0.3 * cos(angle),
+                0.5 + 0.3 * sin(angle),
+                1.5 + 0.5 * sin(angle * 0.5)
+            )
+            settings.lightAngle += lightAnimationSpeed * 0.02
+        }
+        
         let colorSchemePointer = colorSchemeBuffer.contents().bindMemory(to: RDColorScheme.self, capacity: 1)
-        colorSchemePointer[0] = currentColorScheme
+        colorSchemePointer[0] = scheme
     }
     
     // MARK: - Simulation Control
@@ -210,13 +229,12 @@ class ReactionDiffusionEngine: ObservableObject {
         updateParametersBuffer()
         
         // Run multiple simulation steps per frame for better temporal resolution
-        // This matches how the Python version runs many timesteps
         let stepsPerFrame = 2
         for _ in 0..<stepsPerFrame {
             runSimulationStep()
         }
         
-        // Run display step
+        // Run enhanced display step with 3D lighting
         runDisplayStep()
         
         // Update performance
@@ -236,13 +254,11 @@ class ReactionDiffusionEngine: ObservableObject {
         let currentSim = currentTextureIndex == 0 ? textureA! : textureB!
         let nextSim = currentTextureIndex == 0 ? textureB! : textureA!
         
-        encoder.setTexture(currentSim, index: 0)  // Read from current
-        encoder.setTexture(nextSim, index: 1)     // Write to next
+        encoder.setTexture(currentSim, index: 0)
+        encoder.setTexture(nextSim, index: 1)
         
-        // Set parameters buffer
         encoder.setBuffer(parametersBuffer, offset: 0, index: 0)
         
-        // Dispatch threads
         let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
         let threadGroups = MTLSize(
             width: (Int(settings.width) + threadGroupSize.width - 1) / threadGroupSize.width,
@@ -268,14 +284,13 @@ class ReactionDiffusionEngine: ObservableObject {
         
         // Set textures
         let currentSim = currentTextureIndex == 0 ? textureA! : textureB!
-        encoder.setTexture(currentSim, index: 0)        // Read from simulation
-        encoder.setTexture(displayTexture, index: 1)    // Write to display
+        encoder.setTexture(currentSim, index: 0)
+        encoder.setTexture(displayTexture, index: 1)
         
-        // Set buffers
+        // Set buffers with updated lighting
         encoder.setBuffer(parametersBuffer, offset: 0, index: 0)
         encoder.setBuffer(colorSchemeBuffer, offset: 0, index: 1)
         
-        // Dispatch threads
         let threadGroupSize = MTLSize(width: 16, height: 16, depth: 1)
         let threadGroups = MTLSize(
             width: (Int(settings.width) + threadGroupSize.width - 1) / threadGroupSize.width,
@@ -326,7 +341,7 @@ class ReactionDiffusionEngine: ObservableObject {
         commandBuffer.waitUntilCompleted()
         
         currentTextureIndex = 0
-        print("Simulation initialized")
+        print("Simulation initialized with 3D lighting")
     }
     
     func reset() {
@@ -354,7 +369,6 @@ class ReactionDiffusionEngine: ObservableObject {
     }
     
     func injectChemical(at point: CGPoint, radius: Float = 10.0, strength: Float = 1.0) {
-        // Convert normalized coordinates to texture coordinates
         let texX = Float(point.x * CGFloat(settings.width))
         let texY = Float(point.y * CGFloat(settings.height))
         
@@ -363,12 +377,10 @@ class ReactionDiffusionEngine: ObservableObject {
         settings.brushStrength = strength
     }
     
-    // Get the current display texture for rendering
     func getDisplayTexture() -> MTLTexture {
         return displayTexture
     }
     
-    // Update texture size (for window resizing)
     func updateSize(width: Int32, height: Int32) {
         settings.updateSize(width: width, height: height)
         setupTextures()
@@ -376,7 +388,7 @@ class ReactionDiffusionEngine: ObservableObject {
         print("Simulation size updated to: \(width)×\(height)")
     }
     
-    // MARK: - Color Scheme Management
+    // MARK: - Enhanced Color Scheme Management
     
     func setColorScheme(_ scheme: RDColorScheme) {
         currentColorScheme = scheme
@@ -396,29 +408,48 @@ class ReactionDiffusionEngine: ObservableObject {
         case "Grayscale":
             scheme = RDColorScheme.grayscale
         case "Electric":
-            scheme = RDColorScheme(
-                colorA: SIMD3<Float>(0.1, 0.0, 0.5),
-                colorB: SIMD3<Float>(0.0, 1.0, 1.0),
-                colorC: SIMD3<Float>(1.0, 1.0, 1.0),
-                mode: 1, intensity: 1.3, contrast: 1.4
-            )
+            scheme = RDColorScheme.electric
         case "Sunset":
-            scheme = RDColorScheme(
-                colorA: SIMD3<Float>(0.2, 0.0, 0.4),
-                colorB: SIMD3<Float>(1.0, 0.4, 0.0),
-                colorC: SIMD3<Float>(1.0, 1.0, 0.8),
-                mode: 1, intensity: 1.1, contrast: 1.2
-            )
+            scheme = RDColorScheme.sunset
+        case "Metallic":
+            scheme = RDColorScheme.metallic
+        case "Neon":
+            scheme = RDColorScheme.neon
         default:
             scheme = RDColorScheme.organic
         }
         
         setColorScheme(scheme)
-        print("Color scheme changed to: \(name)")
+        print("Color scheme changed to: \(name) with 3D lighting")
+    }
+    
+    // MARK: - 3D Lighting Controls
+    
+    func toggleLightAnimation() {
+        lightAnimationEnabled.toggle()
+        print("Light animation \(lightAnimationEnabled ? "enabled" : "disabled")")
+    }
+    
+    func setLightAnimationSpeed(_ speed: Float) {
+        lightAnimationSpeed = max(0.1, min(2.0, speed))
+    }
+    
+    func updateLightingParameters(heightScale: Float? = nil,
+                                 shininess: Float? = nil,
+                                 ambient: Float? = nil,
+                                 diffuse: Float? = nil,
+                                 specular: Float? = nil) {
+        if let h = heightScale { settings.heightScale = h }
+        if let s = shininess { settings.shininess = s }
+        if let a = ambient { settings.ambientStrength = a }
+        if let d = diffuse { settings.diffuseStrength = d }
+        if let sp = specular { settings.specularStrength = sp }
+        
+        updateColorSchemeBuffer()
     }
     
     func getSimulationInfo() -> String {
-        return String(format: "FPS: %.1f | %dx%d | %@ | GPU: %@",
+        return String(format: "FPS: %.1f | %dx%d | %@ | GPU: %@ | 3D: ON",
                      currentFPS,
                      Int(settings.width),
                      Int(settings.height),

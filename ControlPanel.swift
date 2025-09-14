@@ -1,8 +1,6 @@
 //
-//  ControlPanel.swift
+//  ControlPanel.swift - Complete Version with 3D Lighting Controls
 //  reaction-diffusion-metal
-//
-//  Created by suf on 13/09/2025.
 //
 
 import SwiftUI
@@ -43,10 +41,7 @@ class ControlPanelWindowController: NSWindowController {
     
     func updateCinematicMode(_ enabled: Bool) {
         // Update the control panel's cinematic mode state
-        if let contentView = hostingView?.rootView as? RDControlPanelContent {
-            // This would need to be handled via a binding or observable
-            // For now, we'll handle it through notifications
-        }
+        // This is handled through notifications
     }
 }
 
@@ -109,9 +104,9 @@ struct RDControlPanelContent: View {
                     
                     Divider()
                     
-                    // Visual Section
+                    // Visual & 3D Section
                     CollapsibleSection(
-                        title: "Visual",
+                        title: "Visual & 3D",
                         isExpanded: expandedSection == "visual"
                     ) {
                         expandedSection = expandedSection == "visual" ? nil : "visual"
@@ -196,7 +191,7 @@ struct HeaderSection: View {
                     .font(.title2)
                     .fontWeight(.bold)
                 
-                Text("Control Panel")
+                Text("3D Control Panel")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -449,14 +444,15 @@ struct ParameterSlider: View {
     }
 }
 
-// MARK: - Visual Section
+// MARK: - Visual & 3D Section
 
 struct VisualSection: View {
     @Binding var selectedColorScheme: String
     @ObservedObject var settings: RDSettings
     let renderer: MetalRenderer
+    @State private var showAdvanced3D = false
     
-    let colorSchemes = ["Organic", "Fire", "Ocean", "Grayscale", "Electric", "Sunset"]
+    let colorSchemes = ["Organic", "Fire", "Ocean", "Grayscale", "Electric", "Sunset", "Metallic", "Neon"]
     
     var body: some View {
         VStack(spacing: 16) {
@@ -476,25 +472,147 @@ struct VisualSection: View {
                 }
             }
             
-            // Visual enhancement sliders
+            Divider()
+            
+            // 3D Lighting Controls
             VStack(spacing: 12) {
-                Text("Enhancements")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack {
+                    Label("3D Lighting", systemImage: "light.max")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    
+                    Spacer()
+                    
+                    Button(showAdvanced3D ? "Simple" : "Advanced") {
+                        withAnimation {
+                            showAdvanced3D.toggle()
+                        }
+                    }
+                    .font(.caption)
+                }
                 
-
+                // Basic 3D controls
+                VStack(spacing: 12) {
+                    ParameterSlider(
+                        title: "Height",
+                        value: $settings.heightScale,
+                        range: 0.0...0.5,
+                        step: 0.01,
+                        color: .blue
+                    )
+                    .help("Controls the 3D embossing depth")
+                    
+                    ParameterSlider(
+                        title: "Shininess",
+                        value: $settings.shininess,
+                        range: 4.0...256.0,
+                        step: 4.0,
+                        color: .yellow
+                    )
+                    .help("Specular highlight sharpness")
+                    
+                    if showAdvanced3D {
+                        // Advanced lighting controls
+                        ParameterSlider(
+                            title: "Ambient",
+                            value: $settings.ambientStrength,
+                            range: 0.1...0.8,
+                            step: 0.05,
+                            color: .gray
+                        )
+                        .help("Base lighting level")
+                        
+                        ParameterSlider(
+                            title: "Diffuse",
+                            value: $settings.diffuseStrength,
+                            range: 0.2...1.0,
+                            step: 0.05,
+                            color: .green
+                        )
+                        .help("Surface light scattering")
+                        
+                        ParameterSlider(
+                            title: "Specular",
+                            value: $settings.specularStrength,
+                            range: 0.0...2.0,
+                            step: 0.1,
+                            color: .white
+                        )
+                        .help("Highlight intensity")
+                        
+                        // Light animation controls
+                        HStack {
+                            Toggle("Animate Light", isOn: Binding(
+                                get: { renderer.engine.lightAnimationEnabled },
+                                set: { enabled in
+                                    if enabled {
+                                        renderer.engine.toggleLightAnimation()
+                                    } else {
+                                        renderer.engine.toggleLightAnimation()
+                                    }
+                                }
+                            ))
+                            .toggleStyle(SwitchToggleStyle(tint: .orange))
+                            
+                            if renderer.engine.lightAnimationEnabled {
+                                Slider(
+                                    value: Binding(
+                                        get: { CGFloat(renderer.engine.lightAnimationSpeed) },
+                                        set: { renderer.engine.setLightAnimationSpeed(Float($0)) }
+                                    ),
+                                    in: 0.1...2.0,
+                                    step: 0.1
+                                )
+                                .frame(width: 80)
+                                .help("Animation speed")
+                            }
+                        }
+                        .font(.caption)
+                    }
+                }
                 
-                ParameterSlider(
-                    title: "Contrast",
-                    value: Binding(
-                        get: { Float(1.0) }, // Default contrast
-                        set: { _ in }
-                    ),
-                    range: 0.5...2.0,
-                    step: 0.1,
-                    color: .gray
-                )
+                // Preset lighting configurations
+                if showAdvanced3D {
+                    VStack(spacing: 8) {
+                        Text("Lighting Presets")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        HStack(spacing: 8) {
+                            LightingPresetButton(title: "Subtle") {
+                                settings.heightScale = 0.08
+                                settings.shininess = 16
+                                settings.ambientStrength = 0.5
+                                settings.diffuseStrength = 0.5
+                                settings.specularStrength = 0.3
+                            }
+                            
+                            LightingPresetButton(title: "Standard") {
+                                settings.heightScale = 0.15
+                                settings.shininess = 32
+                                settings.ambientStrength = 0.4
+                                settings.diffuseStrength = 0.6
+                                settings.specularStrength = 0.5
+                            }
+                            
+                            LightingPresetButton(title: "Dramatic") {
+                                settings.heightScale = 0.25
+                                settings.shininess = 64
+                                settings.ambientStrength = 0.25
+                                settings.diffuseStrength = 0.7
+                                settings.specularStrength = 0.8
+                            }
+                            
+                            LightingPresetButton(title: "Glossy") {
+                                settings.heightScale = 0.2
+                                settings.shininess = 128
+                                settings.ambientStrength = 0.3
+                                settings.diffuseStrength = 0.5
+                                settings.specularStrength = 1.2
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -518,6 +636,27 @@ struct ColorSchemeButton: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct LightingPresetButton: View {
+    let title: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(Color.secondary.opacity(0.1))
+                .cornerRadius(4)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
                         .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
                 )
         }
@@ -675,6 +814,28 @@ struct HelpSection: View {
                     HelpRow(key: "Right-click", action: "Reset simulation")
                     HelpRow(key: "Scroll", action: "Change brush size")
                 }
+            }
+            
+            Divider()
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Label("3D Lighting", systemImage: "light.max")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Text("The 3D effect uses the chemical concentration as a height map, applying Phong lighting with normal mapping for realistic embossed appearance.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("• Height: Controls embossing depth")
+                    Text("• Shininess: Specular highlight sharpness")
+                    Text("• Ambient: Base lighting level")
+                    Text("• Diffuse: Surface light scattering")
+                    Text("• Specular: Highlight intensity")
+                }
+                .font(.caption2)
+                .foregroundColor(.secondary)
             }
             
             Divider()
