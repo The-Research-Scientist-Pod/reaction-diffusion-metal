@@ -1,6 +1,8 @@
 //
-//  ReactionDiffusionEngine.swift - Enhanced with 3D Lighting
+//  ReactionDiffusionEngine.swift
 //  reaction-diffusion-metal
+//
+//  Complete version with 3D lighting support
 //
 
 import Metal
@@ -9,6 +11,8 @@ import simd
 import SwiftUI
 
 class ReactionDiffusionEngine: ObservableObject {
+    // MARK: - Properties
+    
     // Metal components
     private var device: MTLDevice!
     private var commandQueue: MTLCommandQueue!
@@ -40,8 +44,10 @@ class ReactionDiffusionEngine: ObservableObject {
     private var currentColorScheme = RDColorScheme.organic
     
     // Animation state for dynamic lighting
-    public var lightAnimationEnabled = false
-    public var lightAnimationSpeed: Float = 0.5
+    @Published var lightAnimationEnabled = false
+    var lightAnimationSpeed: Float = 0.5
+    
+    // MARK: - Initialization
     
     init() {
         print("🚀 Initializing ReactionDiffusionEngine with 3D lighting...")
@@ -96,7 +102,7 @@ class ReactionDiffusionEngine: ObservableObject {
         let width = Int(settings.width)
         let height = Int(settings.height)
         
-        // Simulation textures - RGBA32Float to store more data
+        // Simulation textures - RGBA32Float to store all data
         let simDescriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba32Float,
             width: width,
@@ -199,7 +205,7 @@ class ReactionDiffusionEngine: ObservableObject {
     private func updateColorSchemeBuffer() {
         var scheme = currentColorScheme
         
-        // Apply settings overrides
+        // ALWAYS apply current settings overrides for real-time updates
         scheme.heightScale = settings.heightScale
         scheme.shininess = settings.shininess
         scheme.ambientStrength = settings.ambientStrength
@@ -226,7 +232,9 @@ class ReactionDiffusionEngine: ObservableObject {
     func step() {
         guard isInitialized && isRunning else { return }
         
+        // Update ALL buffers every frame to ensure UI changes are reflected
         updateParametersBuffer()
+        updateColorSchemeBuffer()  // This now includes all lighting parameters
         
         // Run multiple simulation steps per frame for better temporal resolution
         let stepsPerFrame = 2
@@ -427,11 +435,13 @@ class ReactionDiffusionEngine: ObservableObject {
     
     func toggleLightAnimation() {
         lightAnimationEnabled.toggle()
+        updateColorSchemeBuffer()  // Immediate update
         print("Light animation \(lightAnimationEnabled ? "enabled" : "disabled")")
     }
     
     func setLightAnimationSpeed(_ speed: Float) {
         lightAnimationSpeed = max(0.1, min(2.0, speed))
+        updateColorSchemeBuffer()  // Immediate update
     }
     
     func updateLightingParameters(heightScale: Float? = nil,
@@ -445,6 +455,11 @@ class ReactionDiffusionEngine: ObservableObject {
         if let d = diffuse { settings.diffuseStrength = d }
         if let sp = specular { settings.specularStrength = sp }
         
+        updateColorSchemeBuffer()  // Immediate update
+    }
+    
+    // Force immediate update when UI changes
+    func forceUpdateLighting() {
         updateColorSchemeBuffer()
     }
     

@@ -1,6 +1,8 @@
 //
-//  ControlPanel.swift - Complete Version with 3D Lighting Controls
+//  ControlPanel.swift
 //  reaction-diffusion-metal
+//
+//  Complete version with real-time 3D lighting controls
 //
 
 import SwiftUI
@@ -40,8 +42,7 @@ class ControlPanelWindowController: NSWindowController {
     }
     
     func updateCinematicMode(_ enabled: Bool) {
-        // Update the control panel's cinematic mode state
-        // This is handled through notifications
+        // Handled through notifications
     }
 }
 
@@ -99,7 +100,7 @@ struct RDControlPanelContent: View {
                     ) {
                         expandedSection = expandedSection == "parameters" ? nil : "parameters"
                     } content: {
-                        ParametersSection(settings: settings)
+                        ParametersSection(settings: settings, renderer: renderer)
                     }
                     
                     Divider()
@@ -173,7 +174,6 @@ struct RDControlPanelContent: View {
             cinematicMode.toggle()
         }
         .onAppear {
-            // Set initial preset
             renderer.changePreset(selectedPreset)
         }
     }
@@ -291,7 +291,6 @@ struct PresetsSection: View {
                 }
             }
             
-            // Preset info card
             if let preset = presetManager.getPreset(named: selectedPreset) {
                 PresetInfoCard(preset: preset)
             }
@@ -357,6 +356,7 @@ struct PresetInfoCard: View {
 
 struct ParametersSection: View {
     @ObservedObject var settings: RDSettings
+    let renderer: MetalRenderer
     
     var body: some View {
         VStack(spacing: 16) {
@@ -411,39 +411,6 @@ struct ParametersSection: View {
     }
 }
 
-struct ParameterSlider: View {
-    let title: String
-    @Binding var value: Float
-    let range: ClosedRange<Double>
-    let step: Double
-    let color: Color
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(title)
-                    .font(.caption)
-                
-                Spacer()
-                
-                Text(String(format: step < 0.01 ? "%.3f" : "%.1f", value))
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundColor(.secondary)
-            }
-            
-            Slider(
-                value: Binding(
-                    get: { Double(value) },
-                    set: { value = Float($0) }
-                ),
-                in: range,
-                step: step
-            )
-            .accentColor(color)
-        }
-    }
-}
-
 // MARK: - Visual & 3D Section
 
 struct VisualSection: View {
@@ -491,7 +458,7 @@ struct VisualSection: View {
                     .font(.caption)
                 }
                 
-                // Basic 3D controls
+                // Basic 3D controls with real-time updates
                 VStack(spacing: 12) {
                     ParameterSlider(
                         title: "Height",
@@ -501,6 +468,9 @@ struct VisualSection: View {
                         color: .blue
                     )
                     .help("Controls the 3D embossing depth")
+                    .onChange(of: settings.heightScale) { _ in
+                        renderer.engine.forceUpdateLighting()
+                    }
                     
                     ParameterSlider(
                         title: "Shininess",
@@ -510,9 +480,12 @@ struct VisualSection: View {
                         color: .yellow
                     )
                     .help("Specular highlight sharpness")
+                    .onChange(of: settings.shininess) { _ in
+                        renderer.engine.forceUpdateLighting()
+                    }
                     
                     if showAdvanced3D {
-                        // Advanced lighting controls
+                        // Advanced lighting controls with real-time updates
                         ParameterSlider(
                             title: "Ambient",
                             value: $settings.ambientStrength,
@@ -521,6 +494,9 @@ struct VisualSection: View {
                             color: .gray
                         )
                         .help("Base lighting level")
+                        .onChange(of: settings.ambientStrength) { _ in
+                            renderer.engine.forceUpdateLighting()
+                        }
                         
                         ParameterSlider(
                             title: "Diffuse",
@@ -530,6 +506,9 @@ struct VisualSection: View {
                             color: .green
                         )
                         .help("Surface light scattering")
+                        .onChange(of: settings.diffuseStrength) { _ in
+                            renderer.engine.forceUpdateLighting()
+                        }
                         
                         ParameterSlider(
                             title: "Specular",
@@ -539,17 +518,17 @@ struct VisualSection: View {
                             color: .white
                         )
                         .help("Highlight intensity")
+                        .onChange(of: settings.specularStrength) { _ in
+                            renderer.engine.forceUpdateLighting()
+                        }
                         
                         // Light animation controls
                         HStack {
                             Toggle("Animate Light", isOn: Binding(
                                 get: { renderer.engine.lightAnimationEnabled },
                                 set: { enabled in
-                                    if enabled {
-                                        renderer.engine.toggleLightAnimation()
-                                    } else {
-                                        renderer.engine.toggleLightAnimation()
-                                    }
+                                    renderer.engine.lightAnimationEnabled = enabled
+                                    renderer.engine.forceUpdateLighting()
                                 }
                             ))
                             .toggleStyle(SwitchToggleStyle(tint: .orange))
@@ -557,8 +536,11 @@ struct VisualSection: View {
                             if renderer.engine.lightAnimationEnabled {
                                 Slider(
                                     value: Binding(
-                                        get: { CGFloat(renderer.engine.lightAnimationSpeed) },
-                                        set: { renderer.engine.setLightAnimationSpeed(Float($0)) }
+                                        get: { Double(renderer.engine.lightAnimationSpeed) },
+                                        set: { speed in
+                                            renderer.engine.lightAnimationSpeed = Float(speed)
+                                            renderer.engine.forceUpdateLighting()
+                                        }
                                     ),
                                     in: 0.1...2.0,
                                     step: 0.1
@@ -585,6 +567,7 @@ struct VisualSection: View {
                                 settings.ambientStrength = 0.5
                                 settings.diffuseStrength = 0.5
                                 settings.specularStrength = 0.3
+                                renderer.engine.forceUpdateLighting()
                             }
                             
                             LightingPresetButton(title: "Standard") {
@@ -593,6 +576,7 @@ struct VisualSection: View {
                                 settings.ambientStrength = 0.4
                                 settings.diffuseStrength = 0.6
                                 settings.specularStrength = 0.5
+                                renderer.engine.forceUpdateLighting()
                             }
                             
                             LightingPresetButton(title: "Dramatic") {
@@ -601,6 +585,7 @@ struct VisualSection: View {
                                 settings.ambientStrength = 0.25
                                 settings.diffuseStrength = 0.7
                                 settings.specularStrength = 0.8
+                                renderer.engine.forceUpdateLighting()
                             }
                             
                             LightingPresetButton(title: "Glossy") {
@@ -609,58 +594,13 @@ struct VisualSection: View {
                                 settings.ambientStrength = 0.3
                                 settings.diffuseStrength = 0.5
                                 settings.specularStrength = 1.2
+                                renderer.engine.forceUpdateLighting()
                             }
                         }
                     }
                 }
             }
         }
-    }
-}
-
-struct ColorSchemeButton: View {
-    let name: String
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(name)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(isSelected ? .white : .primary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(isSelected ? Color.orange : Color.secondary.opacity(0.1))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-struct LightingPresetButton: View {
-    let title: String
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 11, weight: .medium))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-                .background(Color.secondary.opacity(0.1))
-                .cornerRadius(4)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                )
-        }
-        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -708,28 +648,6 @@ struct ControlsSection: View {
     }
 }
 
-struct ControlButton: View {
-    let title: String
-    let icon: String
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Label(title, systemImage: icon)
-                .font(.system(size: 13, weight: .medium))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(Color.secondary.opacity(0.1))
-                .cornerRadius(6)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
 // MARK: - Resolution Section
 
 struct ResolutionSection: View {
@@ -759,27 +677,6 @@ struct ResolutionSection: View {
                 renderer.setResolution(width: 3840, height: 2160)
             }
         }
-    }
-}
-
-struct ResolutionButton: View {
-    let title: String
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(Color.secondary.opacity(0.1))
-                .cornerRadius(6)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                )
-        }
-        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -850,6 +747,130 @@ struct HelpSection: View {
                     .foregroundColor(.secondary)
             }
         }
+    }
+}
+
+// MARK: - Supporting Components
+
+struct ParameterSlider: View {
+    let title: String
+    @Binding var value: Float
+    let range: ClosedRange<Double>
+    let step: Double
+    let color: Color
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title)
+                    .font(.caption)
+                
+                Spacer()
+                
+                Text(String(format: step < 0.01 ? "%.3f" : "%.1f", value))
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundColor(.secondary)
+            }
+            
+            Slider(
+                value: Binding(
+                    get: { Double(value) },
+                    set: { value = Float($0) }
+                ),
+                in: range,
+                step: step
+            )
+            .accentColor(color)
+        }
+    }
+}
+
+struct ColorSchemeButton: View {
+    let name: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(name)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(isSelected ? .white : .primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isSelected ? Color.orange : Color.secondary.opacity(0.1))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct LightingPresetButton: View {
+    let title: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(Color.secondary.opacity(0.1))
+                .cornerRadius(4)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct ControlButton: View {
+    let title: String
+    let icon: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: icon)
+                .font(.system(size: 13, weight: .medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.secondary.opacity(0.1))
+                .cornerRadius(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct ResolutionButton: View {
+    let title: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12, weight: .medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(Color.secondary.opacity(0.1))
+                .cornerRadius(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
