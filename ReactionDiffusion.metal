@@ -1,12 +1,12 @@
 //
-//  ReactionDiffusion.metal - Enhanced with 3D Lighting
+//  ReactionDiffusion.metal - Enhanced with 3D Lighting and Glow
 //  reaction-diffusion-metal
 //
 
 #include <metal_stdlib>
 using namespace metal;
 
-// Parameters structure - must match Swift ReactionDiffusionParameters
+// Parameters structure
 struct ReactionDiffusionParameters {
     float feedRate;
     float killRate;
@@ -22,7 +22,7 @@ struct ReactionDiffusionParameters {
     float diffusionRadius;
 };
 
-// Enhanced color scheme structure with lighting parameters
+// Enhanced color scheme with lighting and glow parameters
 struct RDColorScheme {
     float3 colorA;
     float3 colorB;
@@ -30,7 +30,7 @@ struct RDColorScheme {
     int mode;
     float intensity;
     float contrast;
-    // New lighting parameters
+    // 3D lighting parameters
     float3 lightPosition;
     float3 viewPosition;
     float heightScale;
@@ -38,9 +38,15 @@ struct RDColorScheme {
     float ambientStrength;
     float diffuseStrength;
     float specularStrength;
+    // Glow parameters
+    float glowEnabled;
+    float glowIntensity;
+    float glowThreshold;
+    float3 glowColor;
+    float glowFalloff;
 };
 
-// Correct diffusion calculation using weighted radial sampling
+// Diffusion calculation
 float2 calculateDiffusion(texture2d<float, access::read> tex, uint2 gid, int radius) {
     int width = tex.get_width();
     int height = tex.get_height();
@@ -74,7 +80,7 @@ float2 calculateDiffusion(texture2d<float, access::read> tex, uint2 gid, int rad
     return float2(0.0);
 }
 
-// Initialize reaction-diffusion system
+// Initialize reaction-diffusion
 kernel void initializeReactionDiffusion(
     texture2d<float, access::write> outTexture [[texture(0)]],
     constant ReactionDiffusionParameters& params [[buffer(0)]],
@@ -108,7 +114,7 @@ kernel void initializeReactionDiffusion(
     outTexture.write(float4(a, b, 0.0, 1.0), gid);
 }
 
-// Main reaction-diffusion simulation step
+// Reaction-diffusion simulation step
 kernel void reactionDiffusionStep(
     texture2d<float, access::read> inTexture [[texture(0)]],
     texture2d<float, access::write> outTexture [[texture(1)]],
@@ -148,12 +154,11 @@ kernel void reactionDiffusionStep(
     outTexture.write(float4(newA, newB, deltaA, deltaB), gid);
 }
 
-// Calculate normal from height map using Sobel operator
+// Calculate normal from height map
 float3 calculateNormal(texture2d<float, access::read> tex, uint2 gid, float heightScale) {
     int width = tex.get_width();
     int height = tex.get_height();
     
-    // Sample neighboring pixels for Sobel operator
     float tl = tex.read(clamp(gid + uint2(-1, -1), uint2(0), uint2(width-1, height-1))).y;
     float tm = tex.read(clamp(gid + uint2( 0, -1), uint2(0), uint2(width-1, height-1))).y;
     float tr = tex.read(clamp(gid + uint2( 1, -1), uint2(0), uint2(width-1, height-1))).y;
@@ -163,19 +168,15 @@ float3 calculateNormal(texture2d<float, access::read> tex, uint2 gid, float heig
     float bm = tex.read(clamp(gid + uint2( 0,  1), uint2(0), uint2(width-1, height-1))).y;
     float br = tex.read(clamp(gid + uint2( 1,  1), uint2(0), uint2(width-1, height-1))).y;
     
-    // Sobel X: [-1 0 1; -2 0 2; -1 0 1]
     float sobelX = (tr + 2.0 * mr + br) - (tl + 2.0 * ml + bl);
-    
-    // Sobel Y: [-1 -2 -1; 0 0 0; 1 2 1]
     float sobelY = (bl + 2.0 * bm + br) - (tl + 2.0 * tm + tr);
     
-    // Construct normal
     float3 normal = normalize(float3(-sobelX * heightScale, -sobelY * heightScale, 1.0));
     
     return normal;
 }
 
-// Calculate ambient occlusion approximation
+// Calculate ambient occlusion
 float calculateAO(texture2d<float, access::read> tex, uint2 gid, int samples) {
     float center = tex.read(gid).y;
     float ao = 0.0;
@@ -185,7 +186,6 @@ float calculateAO(texture2d<float, access::read> tex, uint2 gid, int samples) {
         float sampleCount = 0.0;
         float occluded = 0.0;
         
-        // Sample in a circle
         for (int j = 0; j < 8; j++) {
             float angle = float(j) * 3.14159 * 0.25;
             int2 offset = int2(cos(angle) * radius, sin(angle) * radius);
@@ -204,7 +204,31 @@ float calculateAO(texture2d<float, access::read> tex, uint2 gid, int samples) {
     return ao;
 }
 
-// Enhanced render function with 3D lighting
+// Calculate glow emission based on concentration
+float3 calculateGlow(float concentration, float deltaB, constant RDColorScheme& colorScheme) {
+    if (colorScheme.glowEnabled < 0.5) {
+        return float3(0.0);
+    }
+    
+    // Only glow above threshold
+    if (concentration < colorScheme.glowThreshold) {
+        return float3(0.0);
+    }
+    
+    // Calculate glow intensity
+    float glowAmount = concentration - colorScheme.glowThreshold;
+    glowAmount = pow(glowAmount, colorScheme.glowFalloff);
+    
+    // Add pulse effect based on rate of change
+    float pulse = 1.0 + abs(deltaB) * 2.0;
+    
+    // Calculate final emission
+    float3 emission = colorScheme.glowColor * glowAmount * colorScheme.glowIntensity * pulse;
+    
+    return emission;
+}
+
+// Enhanced render with 3D lighting and glow
 kernel void renderReactionDiffusion(
     texture2d<float, access::read> chemicalTexture [[texture(0)]],
     texture2d<float, access::write> outputTexture [[texture(1)]],
@@ -217,6 +241,8 @@ kernel void renderReactionDiffusion(
     float4 data = chemicalTexture.read(gid);
     float a = data.x;
     float b = data.y;
+    float deltaA = data.z;
+    float deltaB = data.w;
     
     // Calculate base color
     float3 baseColor;
@@ -229,8 +255,6 @@ kernel void renderReactionDiffusion(
         baseColor = mix(colorScheme.colorA, colorScheme.colorB, diff);
     }
     else if (colorScheme.mode == 2) {
-        float deltaA = data.z;
-        float deltaB = data.w;
         float deltaAThreshold = 0.0005;
         deltaA = max(0.0, deltaA - deltaAThreshold);
         
@@ -240,7 +264,6 @@ kernel void renderReactionDiffusion(
         baseColor = clamp(baseColor, 0.0, 1.0);
     }
     else {
-        // Default organic look with tri-color gradient
         float value = b;
         value = clamp((value - 0.5) * colorScheme.contrast + 0.5, 0.0, 1.0);
         
@@ -253,67 +276,67 @@ kernel void renderReactionDiffusion(
         baseColor *= colorScheme.intensity;
     }
     
-    // Apply 3D lighting effect
-    // Use B concentration as height map
+    // 3D lighting calculations
     float heightValue = b;
-    
-    // Calculate normal from height map
     float3 normal = calculateNormal(chemicalTexture, gid, colorScheme.heightScale);
     
-    // Calculate lighting vectors
     float3 fragPos = float3(float(gid.x) / float(params.width),
                            float(gid.y) / float(params.height),
                            heightValue * colorScheme.heightScale);
     
-    // Multiple light sources for better definition
     float3 lightPos1 = colorScheme.lightPosition;
     float3 lightPos2 = float3(0.8, 0.2, 1.0);
     float3 viewPos = colorScheme.viewPosition;
     
-    // Light 1 calculations
     float3 lightDir1 = normalize(lightPos1 - fragPos);
     float3 viewDir = normalize(viewPos - fragPos);
     float3 halfwayDir1 = normalize(lightDir1 + viewDir);
     
-    // Light 2 calculations
     float3 lightDir2 = normalize(lightPos2 - fragPos);
     float3 halfwayDir2 = normalize(lightDir2 + viewDir);
     
-    // Diffuse shading
     float diff1 = max(dot(normal, lightDir1), 0.0);
-    float diff2 = max(dot(normal, lightDir2), 0.0) * 0.5; // Secondary light is dimmer
+    float diff2 = max(dot(normal, lightDir2), 0.0) * 0.5;
     
-    // Specular shading (Blinn-Phong)
     float spec1 = pow(max(dot(normal, halfwayDir1), 0.0), colorScheme.shininess);
     float spec2 = pow(max(dot(normal, halfwayDir2), 0.0), colorScheme.shininess) * 0.3;
     
-    // Calculate ambient occlusion
     float ao = calculateAO(chemicalTexture, gid, 3);
-    ao = mix(0.7, 1.0, ao); // Soften the AO effect
+    ao = mix(0.7, 1.0, ao);
     
-    // Combine lighting components
+    // Combine lighting
     float3 ambient = colorScheme.ambientStrength * baseColor * ao;
     float3 diffuse = colorScheme.diffuseStrength * (diff1 + diff2) * baseColor;
     float3 specular = colorScheme.specularStrength * (spec1 + spec2) * float3(1.0);
     
-    // Edge detection for enhanced definition
+    // Calculate localized glow emission
+    float3 emission = calculateGlow(b, deltaB, colorScheme);
+    
+    // Edge detection
     float edge = length(float2(normal.x, normal.y));
     edge = smoothstep(0.1, 0.3, edge);
     
-    // Final color with lighting
-    float3 finalColor = ambient + diffuse + specular;
+    // Combine all lighting components
+    float3 litColor = ambient + diffuse + specular;
     
-    // Add subtle edge darkening
-    finalColor = mix(finalColor * 0.7, finalColor, 1.0 - edge * 0.3);
+    // Edge darkening
+    litColor = mix(litColor * 0.7, litColor, 1.0 - edge * 0.3);
     
-    // Tone mapping for better contrast
-    finalColor = finalColor / (finalColor + float3(1.0));
-    finalColor = pow(finalColor, float3(1.0/2.2)); // Gamma correction
+    // Add emission to lit color
+    // Emission should be additive and bypass some of the lighting
+    float3 finalColor = litColor + emission;
+    
+    // HDR tone mapping with dynamic exposure based on local emission
+    float localExposure = 1.0 + length(emission) * 0.3;
+    finalColor = float3(1.0) - exp(-finalColor * localExposure);
+    
+    // Gamma correction
+    finalColor = pow(finalColor, float3(1.0/2.2));
     
     outputTexture.write(float4(finalColor, 1.0), gid);
 }
 
-// Vertex/Fragment shaders remain the same
+// Vertex/Fragment shaders
 struct VertexOut {
     float4 position [[position]];
     float2 texCoord;

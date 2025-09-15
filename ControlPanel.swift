@@ -1,8 +1,7 @@
 //
 //  ControlPanel.swift
 //  reaction-diffusion-metal
-//
-//  Complete version with real-time 3D lighting controls
+//  Complete version with 3D Lighting and Glow Controls
 //
 
 import SwiftUI
@@ -16,7 +15,7 @@ class ControlPanelWindowController: NSWindowController {
     
     convenience init(renderer: MetalRenderer, cinematicMode: Bool) {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 380, height: 760),
+            contentRect: NSRect(x: 0, y: 0, width: 380, height: 820),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -24,7 +23,7 @@ class ControlPanelWindowController: NSWindowController {
         
         window.title = "Reaction-Diffusion Controls"
         window.minSize = NSSize(width: 320, height: 600)
-        window.maxSize = NSSize(width: 500, height: 900)
+        window.maxSize = NSSize(width: 500, height: 950)
         
         let contentView = RDControlPanelContent(
             renderer: renderer,
@@ -121,6 +120,18 @@ struct RDControlPanelContent: View {
                     
                     Divider()
                     
+                    // Glow Section
+                    CollapsibleSection(
+                        title: "Glow Effects",
+                        isExpanded: expandedSection == "glow"
+                    ) {
+                        expandedSection = expandedSection == "glow" ? nil : "glow"
+                    } content: {
+                        GlowSection(settings: settings, renderer: renderer)
+                    }
+                    
+                    Divider()
+                    
                     // Controls Section
                     CollapsibleSection(
                         title: "Controls",
@@ -191,7 +202,7 @@ struct HeaderSection: View {
                     .font(.title2)
                     .fontWeight(.bold)
                 
-                Text("3D Control Panel")
+                Text("3D + Glow Control")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -298,60 +309,6 @@ struct PresetsSection: View {
     }
 }
 
-struct PresetButton: View {
-    let preset: RDPreset
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(preset.name)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(isSelected ? .white : .primary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(isSelected ? Color.accentColor : Color.secondary.opacity(0.1))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-struct PresetInfoCard: View {
-    let preset: RDPreset
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(preset.name)
-                .font(.system(size: 11, weight: .semibold))
-            
-            if !preset.description.isEmpty {
-                Text(preset.description)
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            
-            HStack(spacing: 12) {
-                Label("\(preset.feedRate, specifier: "%.3f")", systemImage: "f.circle")
-                Label("\(preset.killRate, specifier: "%.3f")", systemImage: "k.circle")
-            }
-            .font(.system(size: 10, design: .monospaced))
-            .foregroundColor(.secondary)
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.secondary.opacity(0.08))
-        .cornerRadius(6)
-    }
-}
-
 // MARK: - Parameters Section
 
 struct ParametersSection: View {
@@ -435,6 +392,11 @@ struct VisualSection: View {
                     ) {
                         selectedColorScheme = scheme
                         renderer.setColorScheme(scheme)
+                        // Auto-enable glow for Neon
+                        if scheme == "Neon" {
+                            settings.glowEnabled = true
+                            renderer.engine.forceUpdateLighting()
+                        }
                     }
                 }
             }
@@ -458,7 +420,6 @@ struct VisualSection: View {
                     .font(.caption)
                 }
                 
-                // Basic 3D controls with real-time updates
                 VStack(spacing: 12) {
                     ParameterSlider(
                         title: "Height",
@@ -485,7 +446,6 @@ struct VisualSection: View {
                     }
                     
                     if showAdvanced3D {
-                        // Advanced lighting controls with real-time updates
                         ParameterSlider(
                             title: "Ambient",
                             value: $settings.ambientStrength,
@@ -522,7 +482,6 @@ struct VisualSection: View {
                             renderer.engine.forceUpdateLighting()
                         }
                         
-                        // Light animation controls
                         HStack {
                             Toggle("Animate Light", isOn: Binding(
                                 get: { renderer.engine.lightAnimationEnabled },
@@ -553,7 +512,6 @@ struct VisualSection: View {
                     }
                 }
                 
-                // Preset lighting configurations
                 if showAdvanced3D {
                     VStack(spacing: 8) {
                         Text("Lighting Presets")
@@ -594,6 +552,157 @@ struct VisualSection: View {
                                 settings.ambientStrength = 0.3
                                 settings.diffuseStrength = 0.5
                                 settings.specularStrength = 1.2
+                                renderer.engine.forceUpdateLighting()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Glow Section
+
+struct GlowSection: View {
+    @ObservedObject var settings: RDSettings
+    let renderer: MetalRenderer
+    @State private var showAdvancedGlow = false
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            // Main glow toggle
+            HStack {
+                Label("Glow Effect", systemImage: "sparkles")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Spacer()
+                
+                Toggle("", isOn: $settings.glowEnabled)
+                    .toggleStyle(SwitchToggleStyle(tint: .purple))
+                    .onChange(of: settings.glowEnabled) { _ in
+                        renderer.engine.forceUpdateLighting()
+                    }
+                
+                Button(showAdvancedGlow ? "Simple" : "Advanced") {
+                    withAnimation {
+                        showAdvancedGlow.toggle()
+                    }
+                }
+                .font(.caption)
+            }
+            
+            // Basic glow controls
+            if settings.glowEnabled {
+                VStack(spacing: 12) {
+                    ParameterSlider(
+                        title: "Intensity",
+                        value: $settings.glowIntensity,
+                        range: 0.0...3.0,
+                        step: 0.1,
+                        color: .purple
+                    )
+                    .help("Brightness of the glow effect")
+                    .onChange(of: settings.glowIntensity) { _ in
+                        renderer.engine.forceUpdateLighting()
+                    }
+                    
+                    ParameterSlider(
+                        title: "Threshold",
+                        value: $settings.glowThreshold,
+                        range: 0.0...1.0,
+                        step: 0.05,
+                        color: .pink
+                    )
+                    .help("Minimum concentration to start glowing")
+                    .onChange(of: settings.glowThreshold) { _ in
+                        renderer.engine.forceUpdateLighting()
+                    }
+                    
+                    if showAdvancedGlow {
+                        ParameterSlider(
+                            title: "Falloff",
+                            value: $settings.glowFalloff,
+                            range: 0.5...5.0,
+                            step: 0.1,
+                            color: .orange
+                        )
+                        .help("How quickly glow fades from bright areas")
+                        .onChange(of: settings.glowFalloff) { _ in
+                            renderer.engine.forceUpdateLighting()
+                        }
+                        
+                        // Glow color picker
+                        HStack {
+                            Text("Glow Color")
+                                .font(.caption)
+                            
+                            Spacer()
+                            
+                            HStack(spacing: 4) {
+                                GlowColorButton(color: Color.white) {
+                                    settings.glowColor = SIMD3<Float>(1.0, 1.0, 1.0)
+                                    renderer.engine.forceUpdateLighting()
+                                }
+                                
+                                GlowColorButton(color: Color.yellow) {
+                                    settings.glowColor = SIMD3<Float>(1.0, 0.8, 0.4)
+                                    renderer.engine.forceUpdateLighting()
+                                }
+                                
+                                GlowColorButton(color: Color.cyan) {
+                                    settings.glowColor = SIMD3<Float>(0.4, 0.8, 1.0)
+                                    renderer.engine.forceUpdateLighting()
+                                }
+                                
+                                GlowColorButton(color: Color.purple) {
+                                    settings.glowColor = SIMD3<Float>(1.0, 0.2, 1.0)
+                                    renderer.engine.forceUpdateLighting()
+                                }
+                                
+                                GlowColorButton(color: Color.green) {
+                                    settings.glowColor = SIMD3<Float>(0.4, 1.0, 0.4)
+                                    renderer.engine.forceUpdateLighting()
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Glow presets
+                if showAdvancedGlow {
+                    VStack(spacing: 8) {
+                        Text("Glow Presets")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        HStack(spacing: 8) {
+                            GlowPresetButton(title: "Subtle") {
+                                settings.glowIntensity = 0.5
+                                settings.glowThreshold = 0.8
+                                settings.glowFalloff = 3.0
+                                renderer.engine.forceUpdateLighting()
+                            }
+                            
+                            GlowPresetButton(title: "Standard") {
+                                settings.glowIntensity = 1.0
+                                settings.glowThreshold = 0.7
+                                settings.glowFalloff = 2.0
+                                renderer.engine.forceUpdateLighting()
+                            }
+                            
+                            GlowPresetButton(title: "Intense") {
+                                settings.glowIntensity = 2.0
+                                settings.glowThreshold = 0.5
+                                settings.glowFalloff = 1.5
+                                renderer.engine.forceUpdateLighting()
+                            }
+                            
+                            GlowPresetButton(title: "Plasma") {
+                                settings.glowIntensity = 2.5
+                                settings.glowThreshold = 0.3
+                                settings.glowFalloff = 1.0
                                 renderer.engine.forceUpdateLighting()
                             }
                         }
@@ -716,20 +825,19 @@ struct HelpSection: View {
             Divider()
             
             VStack(alignment: .leading, spacing: 8) {
-                Label("3D Lighting", systemImage: "light.max")
+                Label("Glow Effect", systemImage: "sparkles")
                     .font(.subheadline)
                     .fontWeight(.medium)
                 
-                Text("The 3D effect uses the chemical concentration as a height map, applying Phong lighting with normal mapping for realistic embossed appearance.")
+                Text("Glow adds emission based on chemical concentration, with pulse effects on rapid changes.")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("• Height: Controls embossing depth")
-                    Text("• Shininess: Specular highlight sharpness")
-                    Text("• Ambient: Base lighting level")
-                    Text("• Diffuse: Surface light scattering")
-                    Text("• Specular: Highlight intensity")
+                    Text("• Intensity: Overall glow brightness")
+                    Text("• Threshold: Minimum concentration to glow")
+                    Text("• Falloff: Glow fade rate from bright areas")
+                    Text("• Color: Emission color tint")
                 }
                 .font(.caption2)
                 .foregroundColor(.secondary)
@@ -738,11 +846,11 @@ struct HelpSection: View {
             Divider()
             
             VStack(alignment: .leading, spacing: 8) {
-                Label("Cinematic Mode", systemImage: "tv")
+                Label("3D Lighting", systemImage: "light.max")
                     .font(.subheadline)
                     .fontWeight(.medium)
                 
-                Text("Hides all UI elements for a clean, immersive view. Perfect for recordings and presentations.")
+                Text("Uses concentration as height map with Phong lighting for embossed appearance.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -751,6 +859,60 @@ struct HelpSection: View {
 }
 
 // MARK: - Supporting Components
+
+struct PresetButton: View {
+    let preset: RDPreset
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(preset.name)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(isSelected ? .white : .primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isSelected ? Color.accentColor : Color.secondary.opacity(0.1))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct PresetInfoCard: View {
+    let preset: RDPreset
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(preset.name)
+                .font(.system(size: 11, weight: .semibold))
+            
+            if !preset.description.isEmpty {
+                Text(preset.description)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            
+            HStack(spacing: 12) {
+                Label("\(preset.feedRate, specifier: "%.3f")", systemImage: "f.circle")
+                Label("\(preset.killRate, specifier: "%.3f")", systemImage: "k.circle")
+            }
+            .font(.system(size: 10, design: .monospaced))
+            .foregroundColor(.secondary)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.secondary.opacity(0.08))
+        .cornerRadius(6)
+    }
+}
 
 struct ParameterSlider: View {
     let title: String
@@ -825,6 +987,45 @@ struct LightingPresetButton: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 4)
                         .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct GlowColorButton: View {
+    let color: Color
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Circle()
+                .fill(color)
+                .frame(width: 24, height: 24)
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct GlowPresetButton: View {
+    let title: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(Color.purple.opacity(0.15))
+                .cornerRadius(4)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.purple.opacity(0.3), lineWidth: 1)
                 )
         }
         .buttonStyle(PlainButtonStyle())

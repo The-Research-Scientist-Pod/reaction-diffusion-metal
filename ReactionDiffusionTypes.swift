@@ -1,12 +1,12 @@
 //
-//  ReactionDiffusionTypes.swift - Enhanced with 3D Lighting
+//  ReactionDiffusionTypes.swift - Enhanced with Glow
 //  reaction-diffusion-metal
 //
 
 import Foundation
 import simd
 
-// Reaction-Diffusion parameters structure for Metal buffer alignment
+// Reaction-Diffusion parameters structure
 struct ReactionDiffusionParameters {
     var feedRate: Float
     var killRate: Float
@@ -22,7 +22,7 @@ struct ReactionDiffusionParameters {
     var diffusionRadius: Float
 }
 
-// Preset structure for storing complete configurations
+// Preset structure
 struct RDPreset: Codable {
     let name: String
     let description: String
@@ -43,7 +43,7 @@ struct RDPreset: Codable {
     }
 }
 
-// Enhanced color scheme with 3D lighting parameters
+// Enhanced color scheme with glow parameters
 struct RDColorScheme {
     var colorA: SIMD3<Float>
     var colorB: SIMD3<Float>
@@ -51,7 +51,7 @@ struct RDColorScheme {
     var mode: Int32
     var intensity: Float
     var contrast: Float
-    // New 3D lighting parameters
+    // 3D lighting parameters
     var lightPosition: SIMD3<Float>
     var viewPosition: SIMD3<Float>
     var heightScale: Float
@@ -59,8 +59,14 @@ struct RDColorScheme {
     var ambientStrength: Float
     var diffuseStrength: Float
     var specularStrength: Float
+    // Glow parameters
+    var glowEnabled: Float  // 0.0 or 1.0 (float for Metal compatibility)
+    var glowIntensity: Float
+    var glowThreshold: Float
+    var glowColor: SIMD3<Float>
+    var glowFalloff: Float
     
-    // Enhanced presets with lighting
+    // Presets with glow settings
     static let organic = RDColorScheme(
         colorA: SIMD3<Float>(0.05, 0.05, 0.15),
         colorB: SIMD3<Float>(0.8, 0.6, 0.3),
@@ -74,7 +80,12 @@ struct RDColorScheme {
         shininess: 32.0,
         ambientStrength: 0.4,
         diffuseStrength: 0.6,
-        specularStrength: 0.5
+        specularStrength: 0.5,
+        glowEnabled: 0.0,
+        glowIntensity: 1.0,
+        glowThreshold: 0.7,
+        glowColor: SIMD3<Float>(1.0, 0.8, 0.4),
+        glowFalloff: 2.0
     )
     
     static let fire = RDColorScheme(
@@ -90,7 +101,12 @@ struct RDColorScheme {
         shininess: 64.0,
         ambientStrength: 0.3,
         diffuseStrength: 0.7,
-        specularStrength: 0.8
+        specularStrength: 0.8,
+        glowEnabled: 0.0,
+        glowIntensity: 1.5,
+        glowThreshold: 0.6,
+        glowColor: SIMD3<Float>(1.0, 0.6, 0.2),
+        glowFalloff: 1.5
     )
     
     static let ocean = RDColorScheme(
@@ -106,7 +122,12 @@ struct RDColorScheme {
         shininess: 128.0,
         ambientStrength: 0.45,
         diffuseStrength: 0.55,
-        specularStrength: 0.7
+        specularStrength: 0.7,
+        glowEnabled: 0.0,
+        glowIntensity: 0.8,
+        glowThreshold: 0.75,
+        glowColor: SIMD3<Float>(0.4, 0.8, 1.0),
+        glowFalloff: 2.5
     )
     
     static let grayscale = RDColorScheme(
@@ -122,7 +143,12 @@ struct RDColorScheme {
         shininess: 16.0,
         ambientStrength: 0.35,
         diffuseStrength: 0.65,
-        specularStrength: 0.4
+        specularStrength: 0.4,
+        glowEnabled: 0.0,
+        glowIntensity: 1.0,
+        glowThreshold: 0.8,
+        glowColor: SIMD3<Float>(1.0, 1.0, 1.0),
+        glowFalloff: 2.0
     )
     
     static let electric = RDColorScheme(
@@ -138,7 +164,12 @@ struct RDColorScheme {
         shininess: 128.0,
         ambientStrength: 0.25,
         diffuseStrength: 0.65,
-        specularStrength: 0.9
+        specularStrength: 0.9,
+        glowEnabled: 0.0,
+        glowIntensity: 2.0,
+        glowThreshold: 0.5,
+        glowColor: SIMD3<Float>(0.2, 0.8, 1.0),
+        glowFalloff: 1.2
     )
     
     static let sunset = RDColorScheme(
@@ -154,7 +185,12 @@ struct RDColorScheme {
         shininess: 48.0,
         ambientStrength: 0.38,
         diffuseStrength: 0.62,
-        specularStrength: 0.6
+        specularStrength: 0.6,
+        glowEnabled: 0.0,
+        glowIntensity: 1.2,
+        glowThreshold: 0.65,
+        glowColor: SIMD3<Float>(1.0, 0.7, 0.3),
+        glowFalloff: 1.8
     )
     
     static let metallic = RDColorScheme(
@@ -170,7 +206,12 @@ struct RDColorScheme {
         shininess: 256.0,
         ambientStrength: 0.3,
         diffuseStrength: 0.5,
-        specularStrength: 1.0
+        specularStrength: 1.0,
+        glowEnabled: 0.0,
+        glowIntensity: 0.6,
+        glowThreshold: 0.85,
+        glowColor: SIMD3<Float>(0.8, 0.9, 1.0),
+        glowFalloff: 3.0
     )
     
     static let neon = RDColorScheme(
@@ -186,15 +227,18 @@ struct RDColorScheme {
         shininess: 64.0,
         ambientStrength: 0.2,
         diffuseStrength: 0.8,
-        specularStrength: 1.2
+        specularStrength: 1.2,
+        glowEnabled: 1.0,  // Neon has glow enabled by default!
+        glowIntensity: 2.5,
+        glowThreshold: 0.3,
+        glowColor: SIMD3<Float>(1.0, 0.2, 1.0),
+        glowFalloff: 1.0
     )
     
     static let blood = RDColorScheme(
-        colorA: SIMD3<Float>(0.4, 0.0, 0.0),      // Dark blood red background (low B concentration)
-        //colorB: SIMD3<Float>(0.8, 0.3, 0.3),      // Lighter red/pink (medium B concentration)
-        colorB: SIMD3<Float>(1.0, 1.0, 1.0),      // Lighter red/pink (medium B concentration)
-
-        colorC: SIMD3<Float>(1.0, 0.9, 0.9),      // Near white (high B concentration)
+        colorA: SIMD3<Float>(0.4, 0.0, 0.0),
+        colorB: SIMD3<Float>(0.8, 0.3, 0.3),
+        colorC: SIMD3<Float>(1.0, 0.9, 0.9),
         mode: 1,
         intensity: 1.0,
         contrast: 1.5,
@@ -204,11 +248,16 @@ struct RDColorScheme {
         shininess: 30.0,
         ambientStrength: 0.5,
         diffuseStrength: 0.6,
-        specularStrength: 0.4
+        specularStrength: 0.4,
+        glowEnabled: 0.0,
+        glowIntensity: 1.0,
+        glowThreshold: 0.8,
+        glowColor: SIMD3<Float>(1.0, 0.4, 0.4),
+        glowFalloff: 2.2
     )
 }
 
-// Enhanced settings class with 3D parameters
+// Enhanced settings with glow controls
 class RDSettings: ObservableObject {
     @Published var feedRate: Float = 0.055
     @Published var killRate: Float = 0.062
@@ -224,7 +273,14 @@ class RDSettings: ObservableObject {
     @Published var ambientStrength: Float = 0.4
     @Published var diffuseStrength: Float = 0.6
     @Published var specularStrength: Float = 0.5
-    @Published var lightAngle: Float = 0.0  // For animated light rotation
+    @Published var lightAngle: Float = 0.0
+    
+    // Glow controls - optimized for local concentration
+    @Published var glowEnabled: Bool = false
+    @Published var glowIntensity: Float = 0.8  // Reduced from 1.0
+    @Published var glowThreshold: Float = 0.5  // Lower threshold for better response
+    @Published var glowColor: SIMD3<Float> = SIMD3<Float>(1.0, 0.8, 0.4)
+    @Published var glowFalloff: Float = 1.5    // Faster falloff for more localized glow
     
     // Brush state
     var brushPosition: SIMD2<Float> = .zero
@@ -280,7 +336,7 @@ class RDSettings: ObservableObject {
     }
 }
 
-// Preset manager remains the same
+// Preset manager
 class RDPresetManager: ObservableObject {
     static let shared = RDPresetManager()
     
