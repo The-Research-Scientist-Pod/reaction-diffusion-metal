@@ -1,6 +1,7 @@
 //
-//  ReactionDiffusionTypes.swift - Enhanced with Glow
+//  ReactionDiffusionTypes.swift
 //  reaction-diffusion-metal
+//  Complete version with Glow and Resolution Scaling
 //
 
 import Foundation
@@ -257,7 +258,7 @@ struct RDColorScheme {
     )
 }
 
-// Enhanced settings with glow controls
+// Enhanced settings with glow controls and resolution scaling
 class RDSettings: ObservableObject {
     @Published var feedRate: Float = 0.055
     @Published var killRate: Float = 0.062
@@ -293,6 +294,16 @@ class RDSettings: ObservableObject {
     var width: Int32 = 1024
     var height: Int32 = 1024
     
+    // Reference dimensions for consistent pattern scale
+    let referenceWidth: Int32 = 1024
+    let referenceHeight: Int32 = 1024
+    
+    // Calculate scaling factor based on current resolution
+    var resolutionScale: Float {
+        let avgScale = (Float(width) / Float(referenceWidth) + Float(height) / Float(referenceHeight)) / 2.0
+        return avgScale
+    }
+    
     init() {
         loadPreset(RDPresetManager.shared.availablePresets[0])
     }
@@ -306,19 +317,23 @@ class RDSettings: ObservableObject {
     }
     
     func getMetalParams() -> ReactionDiffusionParameters {
+        // Apply resolution scaling to spatial parameters
+        let scaledBrushRadius = brushRadius * self.resolutionScale
+        let scaledDiffusionRadius = diffusionRadius * self.resolutionScale
+        
         return ReactionDiffusionParameters(
             feedRate: feedRate,
             killRate: killRate,
             diffusionA: diffusionA,
             diffusionB: diffusionB,
             deltaTime: deltaTime,
-            brushRadius: brushRadius,
+            brushRadius: scaledBrushRadius,
             brushPosition: brushPosition,
             brushStrength: brushStrength,
             time: time,
             width: width,
             height: height,
-            diffusionRadius: diffusionRadius
+            diffusionRadius: scaledDiffusionRadius
         )
     }
     

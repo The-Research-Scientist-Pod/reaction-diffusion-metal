@@ -782,6 +782,10 @@ struct ResolutionSection: View {
                 renderer.setResolution(width: 1920, height: 1080)
             }
             
+            ResolutionButton(title: "Retina (3456×2234)") {
+                renderer.setResolution(width: 3456, height: 2234)
+            }
+            
             ResolutionButton(title: "4K (3840×2160)") {
                 renderer.setResolution(width: 3840, height: 2160)
             }

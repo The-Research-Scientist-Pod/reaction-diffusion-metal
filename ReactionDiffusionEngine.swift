@@ -366,6 +366,7 @@ class ReactionDiffusionEngine: ObservableObject {
         let texY = Float(point.y * CGFloat(settings.height))
         
         settings.brushPosition = SIMD2<Float>(texX, texY)
+        // Note: brushRadius will be scaled in getMetalParams()
         settings.brushRadius = radius
         settings.brushStrength = strength
     }
