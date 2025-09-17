@@ -1,7 +1,7 @@
 //
 //  ReactionDiffusionTypes.swift
 //  reaction-diffusion-metal
-//  Complete version with Glow and Resolution Scaling
+//  Enhanced 3D version with dramatic depth effects
 //
 
 import Foundation
@@ -67,7 +67,7 @@ struct RDColorScheme {
     var glowColor: SIMD3<Float>
     var glowFalloff: Float
     
-    // Presets with glow settings
+    // Presets with enhanced 3D settings
     static let organic = RDColorScheme(
         colorA: SIMD3<Float>(0.05, 0.05, 0.15),
         colorB: SIMD3<Float>(0.8, 0.6, 0.3),
@@ -77,11 +77,11 @@ struct RDColorScheme {
         contrast: 1.0,
         lightPosition: SIMD3<Float>(0.3, 0.7, 1.5),
         viewPosition: SIMD3<Float>(0.5, 0.5, 2.0),
-        heightScale: 0.15,
-        shininess: 32.0,
-        ambientStrength: 0.4,
-        diffuseStrength: 0.6,
-        specularStrength: 0.5,
+        heightScale: 0.35,      // Increased from 0.15
+        shininess: 128.0,        // Increased from 32.0
+        ambientStrength: 0.25,   // Decreased from 0.4
+        diffuseStrength: 0.7,    // Increased from 0.6
+        specularStrength: 1.2,   // Increased from 0.5
         glowEnabled: 0.0,
         glowIntensity: 1.0,
         glowThreshold: 0.7,
@@ -98,11 +98,11 @@ struct RDColorScheme {
         contrast: 1.1,
         lightPosition: SIMD3<Float>(0.3, 0.7, 1.5),
         viewPosition: SIMD3<Float>(0.5, 0.5, 2.0),
-        heightScale: 0.2,
-        shininess: 64.0,
-        ambientStrength: 0.3,
-        diffuseStrength: 0.7,
-        specularStrength: 0.8,
+        heightScale: 0.4,        // Increased from 0.2
+        shininess: 164.0,        // Increased from 64.0
+        ambientStrength: 0.2,    // Decreased from 0.3
+        diffuseStrength: 0.8,    // Increased from 0.7
+        specularStrength: 1.4,   // Increased from 0.8
         glowEnabled: 0.0,
         glowIntensity: 1.5,
         glowThreshold: 0.6,
@@ -119,11 +119,11 @@ struct RDColorScheme {
         contrast: 1.0,
         lightPosition: SIMD3<Float>(0.3, 0.7, 1.5),
         viewPosition: SIMD3<Float>(0.5, 0.5, 2.0),
-        heightScale: 0.12,
-        shininess: 128.0,
-        ambientStrength: 0.45,
-        diffuseStrength: 0.55,
-        specularStrength: 0.7,
+        heightScale: 0.32,       // Increased from 0.12
+        shininess: 256.0,        // Increased from 128.0
+        ambientStrength: 0.3,    // Decreased from 0.45
+        diffuseStrength: 0.65,   // Increased from 0.55
+        specularStrength: 1.5,   // Increased from 0.7
         glowEnabled: 0.0,
         glowIntensity: 0.8,
         glowThreshold: 0.75,
@@ -140,11 +140,11 @@ struct RDColorScheme {
         contrast: 1.0,
         lightPosition: SIMD3<Float>(0.3, 0.7, 1.5),
         viewPosition: SIMD3<Float>(0.5, 0.5, 2.0),
-        heightScale: 0.18,
-        shininess: 16.0,
-        ambientStrength: 0.35,
-        diffuseStrength: 0.65,
-        specularStrength: 0.4,
+        heightScale: 0.38,       // Increased from 0.18
+        shininess: 96.0,         // Increased from 16.0
+        ambientStrength: 0.2,    // Decreased from 0.35
+        diffuseStrength: 0.75,   // Increased from 0.65
+        specularStrength: 1.0,   // Increased from 0.4
         glowEnabled: 0.0,
         glowIntensity: 1.0,
         glowThreshold: 0.8,
@@ -161,11 +161,11 @@ struct RDColorScheme {
         contrast: 1.4,
         lightPosition: SIMD3<Float>(0.3, 0.7, 1.5),
         viewPosition: SIMD3<Float>(0.5, 0.5, 2.0),
-        heightScale: 0.25,
-        shininess: 128.0,
-        ambientStrength: 0.25,
-        diffuseStrength: 0.65,
-        specularStrength: 0.9,
+        heightScale: 0.45,       // Increased from 0.25
+        shininess: 256.0,        // Increased from 128.0
+        ambientStrength: 0.15,   // Decreased from 0.25
+        diffuseStrength: 0.75,   // Increased from 0.65
+        specularStrength: 1.8,   // Increased from 0.9
         glowEnabled: 0.0,
         glowIntensity: 2.0,
         glowThreshold: 0.5,
@@ -182,11 +182,11 @@ struct RDColorScheme {
         contrast: 1.2,
         lightPosition: SIMD3<Float>(0.7, 0.3, 1.2),
         viewPosition: SIMD3<Float>(0.5, 0.5, 2.0),
-        heightScale: 0.18,
-        shininess: 48.0,
-        ambientStrength: 0.38,
-        diffuseStrength: 0.62,
-        specularStrength: 0.6,
+        heightScale: 0.38,       // Increased from 0.18
+        shininess: 128.0,        // Increased from 48.0
+        ambientStrength: 0.25,   // Decreased from 0.38
+        diffuseStrength: 0.72,   // Increased from 0.62
+        specularStrength: 1.3,   // Increased from 0.6
         glowEnabled: 0.0,
         glowIntensity: 1.2,
         glowThreshold: 0.65,
@@ -203,11 +203,11 @@ struct RDColorScheme {
         contrast: 1.3,
         lightPosition: SIMD3<Float>(0.3, 0.7, 1.5),
         viewPosition: SIMD3<Float>(0.5, 0.5, 2.0),
-        heightScale: 0.22,
-        shininess: 256.0,
-        ambientStrength: 0.3,
-        diffuseStrength: 0.5,
-        specularStrength: 1.0,
+        heightScale: 0.42,       // Increased from 0.22
+        shininess: 512.0,        // Increased from 256.0
+        ambientStrength: 0.15,   // Decreased from 0.3
+        diffuseStrength: 0.6,    // Increased from 0.5
+        specularStrength: 2.0,   // Increased from 1.0
         glowEnabled: 0.0,
         glowIntensity: 0.6,
         glowThreshold: 0.85,
@@ -224,12 +224,12 @@ struct RDColorScheme {
         contrast: 1.5,
         lightPosition: SIMD3<Float>(0.5, 0.5, 1.8),
         viewPosition: SIMD3<Float>(0.5, 0.5, 2.0),
-        heightScale: 0.3,
-        shininess: 64.0,
-        ambientStrength: 0.2,
-        diffuseStrength: 0.8,
-        specularStrength: 1.2,
-        glowEnabled: 1.0,  // Neon has glow enabled by default!
+        heightScale: 0.5,        // Increased from 0.3
+        shininess: 164.0,        // Increased from 64.0
+        ambientStrength: 0.1,    // Decreased from 0.2
+        diffuseStrength: 0.9,    // Increased from 0.8
+        specularStrength: 2.2,   // Increased from 1.2
+        glowEnabled: 1.0,
         glowIntensity: 2.5,
         glowThreshold: 0.3,
         glowColor: SIMD3<Float>(1.0, 0.2, 1.0),
@@ -245,11 +245,11 @@ struct RDColorScheme {
         contrast: 1.5,
         lightPosition: SIMD3<Float>(0.3, 0.7, 1.5),
         viewPosition: SIMD3<Float>(0.5, 0.5, 2.0),
-        heightScale: 0.18,
-        shininess: 30.0,
-        ambientStrength: 0.5,
-        diffuseStrength: 0.6,
-        specularStrength: 0.4,
+        heightScale: 0.38,       // Increased from 0.18
+        shininess: 96.0,         // Increased from 30.0
+        ambientStrength: 0.3,    // Decreased from 0.5
+        diffuseStrength: 0.7,    // Increased from 0.6
+        specularStrength: 1.1,   // Increased from 0.4
         glowEnabled: 0.0,
         glowIntensity: 1.0,
         glowThreshold: 0.8,
@@ -258,7 +258,7 @@ struct RDColorScheme {
     )
 }
 
-// Enhanced settings with glow controls and resolution scaling
+// Enhanced settings with dramatic 3D controls
 class RDSettings: ObservableObject {
     @Published var feedRate: Float = 0.055
     @Published var killRate: Float = 0.062
@@ -268,20 +268,20 @@ class RDSettings: ObservableObject {
     @Published var brushRadius: Float = 10.0
     @Published var diffusionRadius: Float = 3.0
     
-    // 3D lighting controls
-    @Published var heightScale: Float = 0.15
-    @Published var shininess: Float = 32.0
-    @Published var ambientStrength: Float = 0.4
-    @Published var diffuseStrength: Float = 0.6
-    @Published var specularStrength: Float = 0.5
+    // Enhanced 3D lighting controls for dramatic depth
+    @Published var heightScale: Float = 0.35     // Increased from 0.15
+    @Published var shininess: Float = 128.0      // Increased from 32.0
+    @Published var ambientStrength: Float = 0.25 // Decreased from 0.4
+    @Published var diffuseStrength: Float = 0.7  // Increased from 0.6
+    @Published var specularStrength: Float = 1.2 // Increased from 0.5
     @Published var lightAngle: Float = 0.0
     
-    // Glow controls - optimized for local concentration
+    // Glow controls
     @Published var glowEnabled: Bool = false
-    @Published var glowIntensity: Float = 0.8  // Reduced from 1.0
-    @Published var glowThreshold: Float = 0.5  // Lower threshold for better response
+    @Published var glowIntensity: Float = 0.8
+    @Published var glowThreshold: Float = 0.5
     @Published var glowColor: SIMD3<Float> = SIMD3<Float>(1.0, 0.8, 0.4)
-    @Published var glowFalloff: Float = 1.5    // Faster falloff for more localized glow
+    @Published var glowFalloff: Float = 1.5
     
     // Brush state
     var brushPosition: SIMD2<Float> = .zero

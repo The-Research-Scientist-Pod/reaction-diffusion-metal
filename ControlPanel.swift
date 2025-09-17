@@ -1,7 +1,7 @@
 //
 //  ControlPanel.swift
 //  reaction-diffusion-metal
-//  Complete version with 3D Lighting and Glow Controls
+//  Enhanced version with dramatic 3D lighting and wider parameter ranges
 //
 
 import SwiftUI
@@ -202,7 +202,7 @@ struct HeaderSection: View {
                     .font(.title2)
                     .fontWeight(.bold)
                 
-                Text("3D + Glow Control")
+                Text("Enhanced 3D Control")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -368,7 +368,7 @@ struct ParametersSection: View {
     }
 }
 
-// MARK: - Visual & 3D Section
+// MARK: - Visual & 3D Section with Enhanced Ranges
 
 struct VisualSection: View {
     @Binding var selectedColorScheme: String
@@ -403,7 +403,7 @@ struct VisualSection: View {
             
             Divider()
             
-            // 3D Lighting Controls
+            // 3D Lighting Controls with Enhanced Ranges
             VStack(spacing: 12) {
                 HStack {
                     Label("3D Lighting", systemImage: "light.max")
@@ -424,7 +424,7 @@ struct VisualSection: View {
                     ParameterSlider(
                         title: "Height",
                         value: $settings.heightScale,
-                        range: 0.0...0.5,
+                        range: 0.0...1.0,  // Increased from 0.0...0.5
                         step: 0.01,
                         color: .blue
                     )
@@ -436,7 +436,7 @@ struct VisualSection: View {
                     ParameterSlider(
                         title: "Shininess",
                         value: $settings.shininess,
-                        range: 4.0...256.0,
+                        range: 4.0...512.0,  // Increased from 4.0...256.0
                         step: 4.0,
                         color: .yellow
                     )
@@ -449,7 +449,7 @@ struct VisualSection: View {
                         ParameterSlider(
                             title: "Ambient",
                             value: $settings.ambientStrength,
-                            range: 0.1...0.8,
+                            range: 0.05...0.8,  // Adjusted for more dramatic shadows
                             step: 0.05,
                             color: .gray
                         )
@@ -461,7 +461,7 @@ struct VisualSection: View {
                         ParameterSlider(
                             title: "Diffuse",
                             value: $settings.diffuseStrength,
-                            range: 0.2...1.0,
+                            range: 0.2...1.2,  // Increased upper range
                             step: 0.05,
                             color: .green
                         )
@@ -473,7 +473,7 @@ struct VisualSection: View {
                         ParameterSlider(
                             title: "Specular",
                             value: $settings.specularStrength,
-                            range: 0.0...2.0,
+                            range: 0.0...3.0,  // Increased from 0.0...2.0
                             step: 0.1,
                             color: .white
                         )
@@ -520,8 +520,8 @@ struct VisualSection: View {
                         
                         HStack(spacing: 8) {
                             LightingPresetButton(title: "Subtle") {
-                                settings.heightScale = 0.08
-                                settings.shininess = 16
+                                settings.heightScale = 0.15
+                                settings.shininess = 32
                                 settings.ambientStrength = 0.5
                                 settings.diffuseStrength = 0.5
                                 settings.specularStrength = 0.3
@@ -529,29 +529,29 @@ struct VisualSection: View {
                             }
                             
                             LightingPresetButton(title: "Standard") {
-                                settings.heightScale = 0.15
-                                settings.shininess = 32
-                                settings.ambientStrength = 0.4
-                                settings.diffuseStrength = 0.6
-                                settings.specularStrength = 0.5
-                                renderer.engine.forceUpdateLighting()
-                            }
-                            
-                            LightingPresetButton(title: "Dramatic") {
                                 settings.heightScale = 0.25
                                 settings.shininess = 64
-                                settings.ambientStrength = 0.25
-                                settings.diffuseStrength = 0.7
+                                settings.ambientStrength = 0.35
+                                settings.diffuseStrength = 0.65
                                 settings.specularStrength = 0.8
                                 renderer.engine.forceUpdateLighting()
                             }
                             
-                            LightingPresetButton(title: "Glossy") {
-                                settings.heightScale = 0.2
-                                settings.shininess = 128
-                                settings.ambientStrength = 0.3
-                                settings.diffuseStrength = 0.5
-                                settings.specularStrength = 1.2
+                            LightingPresetButton(title: "Dramatic") {
+                                settings.heightScale = 0.45      // Increased from 0.25
+                                settings.shininess = 256         // Increased from 64
+                                settings.ambientStrength = 0.15  // Decreased from 0.25
+                                settings.diffuseStrength = 0.8   // Increased from 0.7
+                                settings.specularStrength = 1.5  // Increased from 0.8
+                                renderer.engine.forceUpdateLighting()
+                            }
+                            
+                            LightingPresetButton(title: "Ultra 3D") {
+                                settings.heightScale = 0.6
+                                settings.shininess = 384
+                                settings.ambientStrength = 0.1
+                                settings.diffuseStrength = 0.9
+                                settings.specularStrength = 2.5
                                 renderer.engine.forceUpdateLighting()
                             }
                         }
@@ -829,6 +829,18 @@ struct HelpSection: View {
             Divider()
             
             VStack(alignment: .leading, spacing: 8) {
+                Label("Enhanced 3D Effect", systemImage: "cube.fill")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Text("For maximum 3D pop effect, try the 'Ultra 3D' preset or adjust Height (0.4-0.6) and Shininess (256-512).")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Divider()
+            
+            VStack(alignment: .leading, spacing: 8) {
                 Label("Glow Effect", systemImage: "sparkles")
                     .font(.subheadline)
                     .fontWeight(.medium)
@@ -845,18 +857,6 @@ struct HelpSection: View {
                 }
                 .font(.caption2)
                 .foregroundColor(.secondary)
-            }
-            
-            Divider()
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Label("3D Lighting", systemImage: "light.max")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                Text("Uses concentration as height map with Phong lighting for embossed appearance.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
         }
     }
